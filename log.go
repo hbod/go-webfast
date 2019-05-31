@@ -4,33 +4,37 @@ import (
 	"os"
 	"time"
 
-	"github.com/go-logger/logger"
+	log "github.com/go-logger/logger"
 )
 
-var L *log.Logger = log.Std
-
-func init() {
-	L.SetPrefix("[APP] ")
-	L.SetFlags(log.Lmodule | log.Llevel | log.Lshortfile | log.Ldate | log.Ltime)
-
-	L.SetOutputLevel(Conf.DefInt("log.level", 0))
-	output := Conf.DefString("log.output", "")
+func Logger(level int, output string, dir string) (l *log.Logger, err error) {
+	var log_flag = log.Lmodule | log.Llevel | log.Lshortfile | log.Ldate | log.Ltime
 
 	if output == "file" {
-		dir := Conf.DefString("log.dir", "logs")
-		err := os.MkdirAll(dir, 0666)
+		if dir == "" {
+			dir = "logs"
+		}
+		err = os.MkdirAll(dir, 0666)
 		if err != nil {
-			L.Errorf("日志目录创建失败(%s)[%s]", dir, err)
+			return
 		} else {
 			fpath := dir + "/" + "app" + time.Now().Format("2006-01") + ".log"
 			var file *os.File
 			file, err = os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 
 			if err != nil {
-				L.Errorf("日志打开失败(%s)[%s]", fpath, err)
+				return
 			} else {
-				log.SetOutput(file)
+				l = log.New(file, "", log_flag)
 			}
 		}
 	}
+
+	if l == nil {
+		l = log.New(os.Stderr, "", log_flag)
+	}
+
+	l.SetOutputLevel(level)
+
+	return
 }

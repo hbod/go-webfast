@@ -1,41 +1,64 @@
 package fast
 
 import (
-	"fmt"
-	"time"
+	"reflect"
 
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
-var Ghttp *gin.Engine
+type Ghttp struct {
+	*gin.Engine
+}
 
-func RunHttp(rs ...Router) {
-	Ghttp = gin.New()
-
-	level := Conf.DefInt("log.level", 0)
-
-	mode := gin.DebugMode
-	if level != 0 {
-		mode = gin.ReleaseMode
-	}
+func NewHttp(mode string) (g *Ghttp, err error) {
 	gin.SetMode(mode)
+	g = new(Ghttp)
+	g.Engine = gin.New()
 
-	Ghttp.Use(
-		gin.Logger(),
-		gin.Recovery(),
-		cors.New(cors.Config{
-			AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "CONNECT", "TRACE"},
-			AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Token", "Authorization"},
-			AllowCredentials: false,
-			MaxAge:           12 * time.Hour,
-			AllowAllOrigins:  true,
-		}))
+	return
+}
 
-	parseRouter(Ghttp, rs...)
+func (g *Ghttp) Router(routers ...Router) {
+	parseRouter(g, routers...)
+}
 
-	err := Ghttp.Run(fmt.Sprintf(":%d", Conf.DefInt("port", 8080)))
-	if err != nil {
-		L.Fatalf("http服务启动失败(ERROR:%s)", err)
+type Router struct {
+	RelPath  string
+	Method   string
+	Handlers []interface{}
+	Groups   []Router
+}
+
+func parseRouter(o interface{}, rs ...Router) {
+	l := len(rs)
+	rv := reflect.ValueOf(o)
+
+	for i := 0; i < l; i++ {
+		r := rs[i]
+
+		var rv_o_c = []reflect.Value{
+			reflect.ValueOf(r.RelPath),
+		}
+
+		if r.Handlers != nil {
+			for _, h := range r.Handlers {
+				rv_o_c = append(rv_o_c, reflect.ValueOf(h))
+			}
+		}
+
+		mName := "Group"
+		if r.Method != "" {
+			mName = r.Method
+		}
+
+		rv_o := rv.MethodByName(mName)
+		rv_o_c_v := rv_o.Call(rv_o_c)
+
+		if r.Groups != nil {
+			if len(rv_o_c_v) > 0 {
+				parseRouter(rv_o_c_v[0].Interface(), r.Groups...)
+			}
+		}
 	}
+
 }
