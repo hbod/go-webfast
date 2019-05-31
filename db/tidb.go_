@@ -1,0 +1,11 @@
+package db
+
+import (
+	_ "github.com/pingcap/tidb"
+
+	"github.com/go-xorm/xorm"
+)
+
+func Tidb(dsn string) (*xorm.Engine, error) {
+	return xorm.NewEngine("tidb", dsn)
+}

@@ -7,15 +7,32 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
-
 	"github.com/go-xorm/builder"
 	"github.com/go-xorm/xorm"
+	"github.com/hbod/go-webfast/db"
 )
 
 func DbOpen(driver string, dsn string, showLog bool, cacherOpen bool, cacherMaxSize int, cacherExpired string) (d *DbModel, err error) {
 	d = new(DbModel)
-	d.Engine, err = xorm.NewEngine(driver, dsn)
+	switch driver {
+	case "mssql":
+		d.Engine, err = db.Mssql(dsn)
+	case "mymysql":
+		d.Engine, err = db.Mymysql(dsn)
+	case "odbc":
+		d.Engine, err = db.Odbc(dsn)
+	case "oracle":
+		// d.Engine, err = db.Oracle(dsn)
+	case "postgres":
+		d.Engine, err = db.Postgres(dsn)
+	case "sqlite3":
+		d.Engine, err = db.Sqlite3(dsn)
+	case "tidb":
+		// d.Engine, err = db.Tidb(dsn)
+	default:
+		d.Engine, err = db.Mysql(dsn)
+	}
+
 	if err != nil {
 		return
 	}
